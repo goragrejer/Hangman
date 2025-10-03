@@ -1,13 +1,14 @@
 // --- Step 1: Set Up Game Variables and DOM References ---
-const words = ["JAVASCRIPT", "CODING", "PROGRAMMING", "HANGMAN", "DEVELOPER"];
 const MAX_GUESSES = 6;
+const RANDOM_WORD_API_URL = 'https://random-word-api.herokuapp.com/word?number=1'; 
+// We are requesting 1 random word from the API
 
 let secretWord = '';
 let guessedLetters = [];
 let remainingGuesses = MAX_GUESSES;
 let gameActive = false;
 
-// DOM Element references
+// DOM Element references (These stay the same)
 const wordDisplay = document.getElementById('word-display');
 const guessesLeftSpan = document.getElementById('guesses-left');
 const guessedLettersSpan = document.getElementById('guessed-letters');
@@ -16,7 +17,8 @@ const guessButton = document.getElementById('guess-button');
 const messageDisplay = document.getElementById('message');
 const startButton = document.getElementById('start-button');
 
-// --- Helper Functions ---
+
+// --- Core Functions (Helper and Logic are mostly unchanged) ---
 
 /**
  * Updates the word display (e.g., changes 'C_D_' to 'C O D E').
@@ -25,6 +27,7 @@ const startButton = document.getElementById('start-button');
 function getDisplayWord() {
     let display = '';
     for (const letter of secretWord) {
+        // Check if the letter has been guessed
         if (guessedLetters.includes(letter)) {
             display += letter + ' ';
         } else {
@@ -40,13 +43,11 @@ function getDisplayWord() {
 function checkGameStatus() {
     const currentDisplay = getDisplayWord();
     
-    // Check for Win: If there are no more underscores in the display
     if (!currentDisplay.includes('_')) {
         endGame(true);
         return;
     }
 
-    // Check for Loss: If guesses run out
     if (remainingGuesses <= 0) {
         endGame(false);
     }
@@ -54,7 +55,6 @@ function checkGameStatus() {
 
 /**
  * Handles the end of the game (win or loss).
- * @param {boolean} won - True if the player won, false otherwise.
  */
 function endGame(won) {
     gameActive = false;
@@ -67,42 +67,72 @@ function endGame(won) {
     } else {
         messageDisplay.textContent = `Game Over! The word was: ${secretWord}`;
         messageDisplay.style.color = '#dc3545';
-        // Show the full word on loss
         wordDisplay.textContent = secretWord.split('').join(' ');
     }
 }
 
 
-// --- Main Game Logic Functions ---
+// --- Main Game Logic: NEW ASYNCHRONOUS START GAME FUNCTION ---
 
 /**
- * Initializes all game state and starts the game.
+ * Fetches a random word and initializes the game state.
  */
-function startGame() {
-    // 1. Reset state
-    secretWord = words[Math.floor(Math.random() * words.length)];
-    guessedLetters = [];
-    remainingGuesses = MAX_GUESSES;
-    gameActive = true;
+async function startGame() {
+    // Disable the button temporarily and show a loading message
+    startButton.textContent = 'Fetching Word...';
+    startButton.disabled = true;
 
-    // 2. Update DOM elements
-    wordDisplay.textContent = getDisplayWord();
-    guessesLeftSpan.textContent = remainingGuesses;
-    guessedLettersSpan.textContent = '';
-    messageDisplay.textContent = '';
-    messageDisplay.style.color = '';
-    letterInput.value = '';
+    try {
+        // Use fetch to request a random word from the API
+        const response = await fetch(RANDOM_WORD_API_URL);
+        
+        // Check if the network response was ok (status 200)
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-    // 3. Enable input
-    guessButton.disabled = false;
-    letterInput.disabled = false;
-    letterInput.focus();
-    console.log(`New word selected: ${secretWord}`); // For testing!
+        // Parse the JSON response into a JavaScript object (an array containing the word)
+        const data = await response.json();
+        
+        // The API returns an array like ['hello'], so we take the first element,
+        // convert it to uppercase for consistency, and store it.
+        const newWord = data[0].toUpperCase();
+
+        // 1. Reset state
+        secretWord = newWord;
+        guessedLetters = [];
+        remainingGuesses = MAX_GUESSES;
+        gameActive = true;
+
+        // 2. Update DOM elements
+        wordDisplay.textContent = getDisplayWord();
+        guessesLeftSpan.textContent = remainingGuesses;
+        guessedLettersSpan.textContent = '';
+        messageDisplay.textContent = '';
+        messageDisplay.style.color = '';
+        letterInput.value = '';
+
+        // 3. Enable input
+        guessButton.disabled = false;
+        letterInput.disabled = false;
+        letterInput.focus();
+        startButton.textContent = 'Start New Game';
+        startButton.disabled = false;
+        
+        console.log(`New word selected: ${secretWord}`); // For testing!
+
+    } catch (error) {
+        console.error('Could not fetch a word:', error);
+        messageDisplay.textContent = 'Error fetching a word. Please try again.';
+        startButton.textContent = 'Retry Game';
+        startButton.disabled = false;
+        gameActive = false;
+    }
 }
 
 
 /**
- * Processes the player's letter guess.
+ * Processes the player's letter guess. (This remains the same)
  */
 function handleGuess() {
     if (!gameActive) {
@@ -110,45 +140,37 @@ function handleGuess() {
         return;
     }
 
-    // Get input and clean it up (convert to uppercase for consistency)
     let guess = letterInput.value.trim().toUpperCase();
-    letterInput.value = ''; // Clear input for next guess
+    letterInput.value = ''; 
     letterInput.focus();
 
-    // Input Validation
     if (!guess || guess.length !== 1 || !/^[A-Z]$/.test(guess)) {
         messageDisplay.textContent = 'Please enter a single letter (A-Z).';
         return;
     }
 
-    // Check if letter was already guessed
     if (guessedLetters.includes(guess)) {
         messageDisplay.textContent = `You already guessed the letter '${guess}'.`;
         return;
     }
 
-    // Add guess to history and update display
     guessedLetters.push(guess);
     guessedLettersSpan.textContent = guessedLetters.join(', ');
-    messageDisplay.textContent = ''; // Clear previous message
+    messageDisplay.textContent = ''; 
 
-    // Check if guess is correct
     if (secretWord.includes(guess)) {
-        // Correct guess: Update word display
         wordDisplay.textContent = getDisplayWord();
         messageDisplay.textContent = `Correct guess! '${guess}' is in the word.`;
     } else {
-        // Incorrect guess: Decrement guesses
         remainingGuesses--;
         guessesLeftSpan.textContent = remainingGuesses;
         messageDisplay.textContent = `Incorrect guess! '${guess}' is not in the word.`;
     }
 
-    // Check if the game has ended (win or loss)
     checkGameStatus();
 }
 
-// --- Event Listeners ---
+// --- Event Listeners (These remain the same) ---
 
 // 1. Start button
 startButton.addEventListener('click', startGame);
@@ -164,5 +186,5 @@ letterInput.addEventListener('keypress', function(event) {
 });
 
 // --- Initial Setup ---
-// Run startGame once when the page loads to set up the initial display
+// Call startGame to set up the game on page load
 startGame();

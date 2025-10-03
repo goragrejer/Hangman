@@ -2,7 +2,8 @@
 const MAX_GUESSES = 6;
 // Define the base URLs for English and Swedish
 const API_URL_ENGLISH = 'https://random-word-api.herokuapp.com/word?number=1';
-const API_URL_SWEDISH = 'https://random-word-api.herokuapp.com/word?lang=sv&number=1'; 
+// 👇 UPDATED SWEDISH API URL (from pavel-pivk) 👇
+const API_URL_SWEDISH = 'https://words.pavel-pivk.com/api/words/random?lang=sv'; 
 
 let secretWord = '';
 let guessedLetters = [];
@@ -104,11 +105,13 @@ function toggleLanguage() {
  */
 async function startGame() {
     // 1. Determine the API URL based on the current language state
-    const API_URL = (currentLanguage === 'EN') ? API_URL_ENGLISH : API_URL_SWEDISH;
+    const isSwedish = currentLanguage === 'SV'; // Flag to simplify conditionals
+    const API_URL = isSwedish ? API_URL_SWEDISH : API_URL_ENGLISH;
 
     // Show loading state
-    startButton.textContent = (currentLanguage === 'EN') ? 'Fetching Word...' : 'Hämtar ord...';
+    startButton.textContent = isSwedish ? 'Hämtar ord...' : 'Fetching Word...';
     startButton.disabled = true;
+    messageDisplay.textContent = ''; // Clear previous message while loading
 
     try {
         const response = await fetch(API_URL);
@@ -118,13 +121,25 @@ async function startGame() {
         }
 
         const data = await response.json();
+        let newWord = '';
+
+        // 👇 UPDATED LOGIC TO HANDLE DIFFERENT API RESPONSE FORMATS 👇
+        if (isSwedish) {
+            // New Swedish API returns an object like: {word: "BLOMMA"}
+            newWord = data.word;
+        } else {
+            // English API returns an array like: ["JAVASCRIPT"]
+            newWord = data[0];
+        }
         
-        // Ensure the word is non-empty and convert to uppercase
-        const newWord = data[0] ? data[0].toUpperCase() : 'DEFAULT'; 
-        if (newWord === 'DEFAULT') throw new Error('Received empty word from API');
+        // Final word validation and assignment
+        if (!newWord) {
+            throw new Error('Received empty word from API');
+        }
+        secretWord = newWord.toUpperCase(); // Convert to uppercase for consistency
+        
 
         // 2. Reset and set game state
-        secretWord = newWord;
         guessedLetters = [];
         remainingGuesses = MAX_GUESSES;
         gameActive = true;
@@ -133,7 +148,7 @@ async function startGame() {
         wordDisplay.textContent = getDisplayWord();
         guessesLeftSpan.textContent = remainingGuesses;
         guessedLettersSpan.textContent = '';
-        messageDisplay.textContent = (currentLanguage === 'EN') ? 'Guess a letter to start!' : 'Gissa en bokstav för att starta!';
+        messageDisplay.textContent = isSwedish ? 'Gissa en bokstav för att starta!' : 'Guess a letter to start!';
         messageDisplay.style.color = '';
         letterInput.value = '';
 
@@ -143,17 +158,18 @@ async function startGame() {
         letterInput.focus();
         
         // 5. Restore start button text
-        startButton.textContent = (currentLanguage === 'EN') ? 'Start New Game' : 'Starta Nytt Spel';
+        startButton.textContent = isSwedish ? 'Starta Nytt Spel' : 'Start New Game';
         startButton.disabled = false;
         
         console.log(`New word selected in ${currentLanguage}: ${secretWord}`);
 
     } catch (error) {
+        // Updated error message to hint at API URL/connection issues
         console.error('Could not fetch a word:', error);
-        messageDisplay.textContent = (currentLanguage === 'EN') 
-            ? 'Error fetching a word. Try again.' 
-            : 'Fel vid hämtning av ord. Försök igen.';
-        startButton.textContent = (currentLanguage === 'EN') ? 'Retry Game' : 'Försök Igen';
+        messageDisplay.textContent = isSwedish 
+            ? 'Fel vid hämtning av ord. Kontrollera API-anslutning.' 
+            : 'Error fetching word. Check API connection.';
+        startButton.textContent = isSwedish ? 'Försök Igen' : 'Retry Game';
         startButton.disabled = false;
         gameActive = false;
     }
@@ -176,7 +192,7 @@ function handleGuess() {
     letterInput.focus();
 
     // Input Validation
-    if (!guess || guess.length !== 1 || !/^[A-ZÅÄÖ]$/.test(guess)) { // Added Swedish letters ÅÄÖ to validation
+    if (!guess || guess.length !== 1 || !/^[A-ZÅÄÖ]$/.test(guess)) { // Supports Swedish letters
         messageDisplay.textContent = (currentLanguage === 'EN') 
             ? 'Please enter a single letter (A-Z).' 
             : 'Vänligen ange en enda bokstav (A-Ö).';

@@ -25,7 +25,7 @@ h1 {
 
 .word-display {
     font-size: 2.5em;
-    letter-spacing: 10px; /* Space out the underscores/letters */
+    letter-spacing: 10px;
     margin: 30px 0;
     font-weight: bold;
     color: #007bff;
@@ -58,16 +58,16 @@ h1 {
     border-radius: 4px;
 }
 
-/* Styling for ALL three buttons */
-#guess-button, #start-button, #language-toggle {
+/* Styling for ONLY the Guess and Start buttons */
+#guess-button, #start-button {
     padding: 10px 20px;
     font-size: 1em;
     cursor: pointer;
     border: none;
     border-radius: 4px;
     transition: background-color 0.3s;
-    /* Margin to space out the Start and Language buttons */
-    margin: 5px; 
+    /* Margin for the Start button only */
+    margin: 10px 5px; 
 }
 
 /* Guess Button Specific Styles (Green) */
@@ -90,15 +90,7 @@ h1 {
     background-color: #0056b3;
 }
 
-/* 👇 NEW STYLES for the Language Toggle Button (Yellow/Amber) */
-#language-toggle {
-    background-color: #ffc107;
-    color: #333;
-}
-
-#language-toggle:hover {
-    background-color: #e0a800;
-}
+/* Removed: #language-toggle styles */
 
 .message {
     font-size: 1.5em;

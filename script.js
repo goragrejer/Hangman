@@ -1,15 +1,13 @@
 // --- Step 1: Set Up Game Variables and DOM References ---
 const MAX_GUESSES = 6;
-// Define the base URLs for English and Swedish
+// Define the base URL for English words
 const API_URL_ENGLISH = 'https://random-word-api.herokuapp.com/word?number=1';
-// 👇 UPDATED SWEDISH API URL (from pavel-pivk) 👇
-const API_URL_SWEDISH = 'https://words.pavel-pivk.com/api/words/random?lang=sv'; 
 
 let secretWord = '';
 let guessedLetters = [];
 let remainingGuesses = MAX_GUESSES;
 let gameActive = false;
-let currentLanguage = 'EN'; // Tracks the current language ('EN' or 'SV')
+// Removed: let currentLanguage = 'EN';
 
 // DOM Element references
 const wordDisplay = document.getElementById('word-display');
@@ -19,10 +17,10 @@ const letterInput = document.getElementById('letter-input');
 const guessButton = document.getElementById('guess-button');
 const messageDisplay = document.getElementById('message');
 const startButton = document.getElementById('start-button');
-const languageToggleButton = document.getElementById('language-toggle'); 
+// Removed: const languageToggleButton = document.getElementById('language-toggle'); 
 
 
-// --- Helper Functions ---
+// --- Helper Functions (UNCHANGED) ---
 
 /**
  * Updates the word display (e.g., changes 'C_D_' to 'C O D E').
@@ -31,7 +29,6 @@ const languageToggleButton = document.getElementById('language-toggle');
 function getDisplayWord() {
     let display = '';
     for (const letter of secretWord) {
-        // Check if the letter has been guessed
         if (guessedLetters.includes(letter)) {
             display += letter + ' ';
         } else {
@@ -47,13 +44,11 @@ function getDisplayWord() {
 function checkGameStatus() {
     const currentDisplay = getDisplayWord();
     
-    // Check for Win: If there are no more underscores
     if (!currentDisplay.includes('_')) {
         endGame(true);
         return;
     }
 
-    // Check for Loss: If guesses run out
     if (remainingGuesses <= 0) {
         endGame(false);
     }
@@ -61,6 +56,7 @@ function checkGameStatus() {
 
 /**
  * Handles the end of the game (win or loss).
+ * NOTE: Language checks are removed, only English messages remain.
  * @param {boolean} won - True if the player won, false otherwise.
  */
 function endGame(won) {
@@ -69,13 +65,11 @@ function endGame(won) {
     letterInput.disabled = true;
 
     if (won) {
-        messageDisplay.textContent = (currentLanguage === 'EN') ? '🎉 YOU WON! 🎉' : '🎉 DU VANN! 🎉';
+        messageDisplay.textContent = '🎉 YOU WON! 🎉';
         messageDisplay.style.color = '#28a745';
     } else {
-        const wordMessage = (currentLanguage === 'EN') ? `Game Over! The word was: ${secretWord}` : `Spelet slut! Ordet var: ${secretWord}`;
-        messageDisplay.textContent = wordMessage;
+        messageDisplay.textContent = `Game Over! The word was: ${secretWord}`;
         messageDisplay.style.color = '#dc3545';
-        // Show the full word on loss
         wordDisplay.textContent = secretWord.split('').join(' ');
     }
 }
@@ -83,35 +77,19 @@ function endGame(won) {
 
 // --- Main Game Logic Functions ---
 
-/**
- * Toggles the game language between English and Swedish.
- */
-function toggleLanguage() {
-    if (currentLanguage === 'EN') {
-        currentLanguage = 'SV';
-        languageToggleButton.textContent = 'Switch to English 🇬🇧';
-        messageDisplay.textContent = 'Spelet är nu på svenska! Klicka på "Starta nytt spel".';
-    } else {
-        currentLanguage = 'EN';
-        languageToggleButton.textContent = 'Switch to Swedish 🇸🇪';
-        messageDisplay.textContent = 'Game is now in English! Click "Start New Game".';
-    }
-    // Automatically start a new game with the new language
-    startGame();
-}
+// Removed: toggleLanguage function
 
 /**
- * Fetches a random word based on the currentLanguage and initializes the game state.
+ * Fetches a random word from the English API and initializes the game state.
+ * NOTE: Logic is simplified as there's only one API and no language state.
  */
 async function startGame() {
-    // 1. Determine the API URL based on the current language state
-    const isSwedish = currentLanguage === 'SV'; // Flag to simplify conditionals
-    const API_URL = isSwedish ? API_URL_SWEDISH : API_URL_ENGLISH;
+    // 1. URL is always English
+    const API_URL = API_URL_ENGLISH;
 
     // Show loading state
-    startButton.textContent = isSwedish ? 'Hämtar ord...' : 'Fetching Word...';
+    startButton.textContent = 'Fetching Word...';
     startButton.disabled = true;
-    messageDisplay.textContent = ''; // Clear previous message while loading
 
     try {
         const response = await fetch(API_URL);
@@ -121,25 +99,13 @@ async function startGame() {
         }
 
         const data = await response.json();
-        let newWord = '';
-
-        // 👇 UPDATED LOGIC TO HANDLE DIFFERENT API RESPONSE FORMATS 👇
-        if (isSwedish) {
-            // New Swedish API returns an object like: {word: "BLOMMA"}
-            newWord = data.word;
-        } else {
-            // English API returns an array like: ["JAVASCRIPT"]
-            newWord = data[0];
-        }
         
-        // Final word validation and assignment
-        if (!newWord) {
-            throw new Error('Received empty word from API');
-        }
-        secretWord = newWord.toUpperCase(); // Convert to uppercase for consistency
-        
+        // Ensure the word is non-empty and convert to uppercase
+        const newWord = data[0] ? data[0].toUpperCase() : 'DEFAULT'; 
+        if (newWord === 'DEFAULT') throw new Error('Received empty word from API');
 
         // 2. Reset and set game state
+        secretWord = newWord;
         guessedLetters = [];
         remainingGuesses = MAX_GUESSES;
         gameActive = true;
@@ -148,7 +114,7 @@ async function startGame() {
         wordDisplay.textContent = getDisplayWord();
         guessesLeftSpan.textContent = remainingGuesses;
         guessedLettersSpan.textContent = '';
-        messageDisplay.textContent = isSwedish ? 'Gissa en bokstav för att starta!' : 'Guess a letter to start!';
+        messageDisplay.textContent = 'Guess a letter to start!';
         messageDisplay.style.color = '';
         letterInput.value = '';
 
@@ -158,18 +124,15 @@ async function startGame() {
         letterInput.focus();
         
         // 5. Restore start button text
-        startButton.textContent = isSwedish ? 'Starta Nytt Spel' : 'Start New Game';
+        startButton.textContent = 'Start New Game';
         startButton.disabled = false;
         
-        console.log(`New word selected in ${currentLanguage}: ${secretWord}`);
+        console.log(`New word selected: ${secretWord}`);
 
     } catch (error) {
-        // Updated error message to hint at API URL/connection issues
         console.error('Could not fetch a word:', error);
-        messageDisplay.textContent = isSwedish 
-            ? 'Fel vid hämtning av ord. Kontrollera API-anslutning.' 
-            : 'Error fetching word. Check API connection.';
-        startButton.textContent = isSwedish ? 'Försök Igen' : 'Retry Game';
+        messageDisplay.textContent = 'Error fetching a word. Try again.';
+        startButton.textContent = 'Retry Game';
         startButton.disabled = false;
         gameActive = false;
     }
@@ -178,12 +141,11 @@ async function startGame() {
 
 /**
  * Processes the player's letter guess.
+ * NOTE: Language checks and Swedish letters (ÅÄÖ) are removed from validation.
  */
 function handleGuess() {
     if (!gameActive) {
-        messageDisplay.textContent = (currentLanguage === 'EN') 
-            ? "Please click 'Start New Game'!" 
-            : "Vänligen klicka på 'Starta Nytt Spel'!";
+        messageDisplay.textContent = "Please click 'Start New Game'!";
         return;
     }
 
@@ -191,19 +153,15 @@ function handleGuess() {
     letterInput.value = ''; 
     letterInput.focus();
 
-    // Input Validation
-    if (!guess || guess.length !== 1 || !/^[A-ZÅÄÖ]$/.test(guess)) { // Supports Swedish letters
-        messageDisplay.textContent = (currentLanguage === 'EN') 
-            ? 'Please enter a single letter (A-Z).' 
-            : 'Vänligen ange en enda bokstav (A-Ö).';
+    // Input Validation (Simplified for English A-Z only)
+    if (!guess || guess.length !== 1 || !/^[A-Z]$/.test(guess)) { 
+        messageDisplay.textContent = 'Please enter a single letter (A-Z).';
         return;
     }
 
     // Check if letter was already guessed
     if (guessedLetters.includes(guess)) {
-        messageDisplay.textContent = (currentLanguage === 'EN') 
-            ? `You already guessed the letter '${guess}'.` 
-            : `Du har redan gissat bokstaven '${guess}'.`;
+        messageDisplay.textContent = `You already guessed the letter '${guess}'.`;
         return;
     }
 
@@ -215,16 +173,12 @@ function handleGuess() {
     // Check if guess is correct
     if (secretWord.includes(guess)) {
         wordDisplay.textContent = getDisplayWord();
-        messageDisplay.textContent = (currentLanguage === 'EN') 
-            ? `Correct guess! '${guess}' is in the word.` 
-            : `Rätt gissning! '${guess}' finns i ordet.`;
+        messageDisplay.textContent = `Correct guess! '${guess}' is in the word.`;
     } else {
         // Incorrect guess: Decrement guesses
         remainingGuesses--;
         guessesLeftSpan.textContent = remainingGuesses;
-        messageDisplay.textContent = (currentLanguage === 'EN') 
-            ? `Incorrect guess! '${guess}' is not in the word.` 
-            : `Fel gissning! '${guess}' finns inte i ordet.`;
+        messageDisplay.textContent = `Incorrect guess! '${guess}' is not in the word.`;
     }
 
     // Check if the game has ended (win or loss)
@@ -246,8 +200,7 @@ letterInput.addEventListener('keypress', function(event) {
     }
 });
 
-// 4. Language toggle button
-languageToggleButton.addEventListener('click', toggleLanguage);
+// Removed: Language toggle button listener
 
 
 // --- Initial Setup ---

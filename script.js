@@ -1,5 +1,5 @@
 // --- Step 1: Set Up Game Variables and DOM References ---
-const MAX_GUESSES = 6;
+const MAX_GUESSES = 8;
 // Define the base URL for English words
 const API_URL_ENGLISH = 'https://random-word-api.herokuapp.com/word?number=1';
 

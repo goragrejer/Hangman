@@ -1,13 +1,13 @@
 // --- Step 1: Set Up Game Variables and DOM References ---
 const MAX_GUESSES = 8;
-// Define the base URL for English words
 const API_URL_ENGLISH = 'https://random-word-api.herokuapp.com/word?number=1';
+
+// We'll keep the guess count at 8 for now, but you can change it to 20 later.
 
 let secretWord = '';
 let guessedLetters = [];
 let remainingGuesses = MAX_GUESSES;
 let gameActive = false;
-// Removed: let currentLanguage = 'EN';
 
 // DOM Element references
 const wordDisplay = document.getElementById('word-display');
@@ -17,7 +17,12 @@ const letterInput = document.getElementById('letter-input');
 const guessButton = document.getElementById('guess-button');
 const messageDisplay = document.getElementById('message');
 const startButton = document.getElementById('start-button');
-// Removed: const languageToggleButton = document.getElementById('language-toggle'); 
+
+// 👇 NEW DOM REFERENCES FOR CUSTOM WORD FEATURE 👇
+const customWordButton = document.getElementById('custom-word-button');
+const customWordArea = document.getElementById('custom-word-area');
+const customWordInput = document.getElementById('custom-word-input');
+const setWordButton = document.getElementById('set-word-button');
 
 
 // --- Helper Functions (UNCHANGED) ---
@@ -56,7 +61,6 @@ function checkGameStatus() {
 
 /**
  * Handles the end of the game (win or loss).
- * NOTE: Language checks are removed, only English messages remain.
  * @param {boolean} won - True if the player won, false otherwise.
  */
 function endGame(won) {
@@ -77,22 +81,44 @@ function endGame(won) {
 
 // --- Main Game Logic Functions ---
 
-// Removed: toggleLanguage function
+/**
+ * Common function to reset game state and update the display based on the current secretWord.
+ */
+function resetGameUI() {
+    guessedLetters = [];
+    remainingGuesses = MAX_GUESSES;
+    gameActive = true;
+
+    wordDisplay.textContent = getDisplayWord();
+    guessesLeftSpan.textContent = remainingGuesses;
+    guessedLettersSpan.textContent = '';
+    messageDisplay.textContent = 'Guess a letter to start!';
+    messageDisplay.style.color = '';
+    letterInput.value = '';
+
+    guessButton.disabled = false;
+    letterInput.disabled = false;
+    letterInput.focus();
+    
+    // Restore button states
+    startButton.textContent = 'Start New Game (Random)';
+    startButton.disabled = false;
+    customWordButton.style.display = 'block';
+}
+
 
 /**
  * Fetches a random word from the English API and initializes the game state.
- * NOTE: Logic is simplified as there's only one API and no language state.
+ * This is now used by the 'Start New Game (Random)' button.
  */
-async function startGame() {
-    // 1. URL is always English
-    const API_URL = API_URL_ENGLISH;
-
+async function startGameWithRandomWord() {
     // Show loading state
     startButton.textContent = 'Fetching Word...';
     startButton.disabled = true;
+    customWordButton.style.display = 'none'; // Hide custom button while fetching
 
     try {
-        const response = await fetch(API_URL);
+        const response = await fetch(API_URL_ENGLISH);
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -104,48 +130,75 @@ async function startGame() {
         const newWord = data[0] ? data[0].toUpperCase() : 'DEFAULT'; 
         if (newWord === 'DEFAULT') throw new Error('Received empty word from API');
 
-        // 2. Reset and set game state
         secretWord = newWord;
-        guessedLetters = [];
-        remainingGuesses = MAX_GUESSES;
-        gameActive = true;
-
-        // 3. Update DOM elements
-        wordDisplay.textContent = getDisplayWord();
-        guessesLeftSpan.textContent = remainingGuesses;
-        guessedLettersSpan.textContent = '';
-        messageDisplay.textContent = 'Guess a letter to start!';
-        messageDisplay.style.color = '';
-        letterInput.value = '';
-
-        // 4. Enable input
-        guessButton.disabled = false;
-        letterInput.disabled = false;
-        letterInput.focus();
-        
-        // 5. Restore start button text
-        startButton.textContent = 'Start New Game';
-        startButton.disabled = false;
-        
-        console.log(`New word selected: ${secretWord}`);
+        resetGameUI(); // Use common reset function
+        console.log(`New word selected from API: ${secretWord}`);
 
     } catch (error) {
         console.error('Could not fetch a word:', error);
         messageDisplay.textContent = 'Error fetching a word. Try again.';
         startButton.textContent = 'Retry Game';
         startButton.disabled = false;
+        customWordButton.style.display = 'block';
         gameActive = false;
     }
 }
 
 
+// 👇 NEW FUNCTION: Handles click of the 'Add Your Own Word' button 👇
+function promptForCustomWord() {
+    // Hide the start buttons
+    startButton.style.display = 'none';
+    customWordButton.style.display = 'none';
+
+    // Show the custom input area
+    customWordArea.style.display = 'block';
+    
+    // Set a specific message and focus the input
+    messageDisplay.textContent = 'Enter a secret word for your friend to guess!';
+    messageDisplay.style.color = 'blue';
+    customWordInput.focus();
+
+    // Disable guess functionality while word is being set
+    guessButton.disabled = true;
+    letterInput.disabled = true;
+}
+
+
+// 👇 NEW FUNCTION: Validates the custom word and starts the game 👇
+function setCustomWordAndStart() {
+    let word = customWordInput.value.trim().toUpperCase();
+
+    // Validation Check: Requires at least 3 letters and only A-Z
+    if (word.length < 3 || !/^[A-Z]+$/.test(word)) {
+        messageDisplay.textContent = 'Please enter a word with at least 3 letters (A-Z only).';
+        messageDisplay.style.color = '#dc3545';
+        return;
+    }
+    
+    // 1. Set the global secretWord variable
+    secretWord = word;
+
+    // 2. Hide the input area and restore the start buttons
+    customWordArea.style.display = 'none';
+    startButton.style.display = 'block';
+    customWordButton.style.display = 'block';
+    
+    // Clear the input field for next time
+    customWordInput.value = '';
+
+    // 3. Start the game with the custom word
+    resetGameUI(); 
+    console.log(`Custom word set: ${secretWord}`);
+}
+
+
 /**
- * Processes the player's letter guess.
- * NOTE: Language checks and Swedish letters (ÅÄÖ) are removed from validation.
+ * Processes the player's letter guess. (UNCHANGED)
  */
 function handleGuess() {
     if (!gameActive) {
-        messageDisplay.textContent = "Please click 'Start New Game'!";
+        messageDisplay.textContent = "Please click 'Start New Game' or set a custom word!";
         return;
     }
 
@@ -153,7 +206,7 @@ function handleGuess() {
     letterInput.value = ''; 
     letterInput.focus();
 
-    // Input Validation (Simplified for English A-Z only)
+    // Input Validation
     if (!guess || guess.length !== 1 || !/^[A-Z]$/.test(guess)) { 
         messageDisplay.textContent = 'Please enter a single letter (A-Z).';
         return;
@@ -185,24 +238,44 @@ function handleGuess() {
     checkGameStatus();
 }
 
+
 // --- Event Listeners ---
 
-// 1. Start button
-startButton.addEventListener('click', startGame);
+// 1. Start button now calls the random word fetch function
+startButton.addEventListener('click', startGameWithRandomWord);
 
-// 2. Guess button
+// 2. Custom Word button opens the input field
+customWordButton.addEventListener('click', promptForCustomWord);
+
+// 3. Set Word button starts the game with the custom word
+setWordButton.addEventListener('click', setCustomWordAndStart);
+
+// 4. Allow 'Enter' key press on the custom input field to submit
+customWordInput.addEventListener('keypress', function(event) {
+    if (event.key === 'Enter') {
+        setCustomWordAndStart();
+    }
+});
+
+// 5. Guess button
 guessButton.addEventListener('click', handleGuess);
 
-// 3. Allow 'Enter' key press on the input field to submit
+// 6. Allow 'Enter' key press on the guess input field to submit
 letterInput.addEventListener('keypress', function(event) {
     if (event.key === 'Enter') {
         handleGuess();
     }
 });
 
-// Removed: Language toggle button listener
-
 
 // --- Initial Setup ---
-// Call startGame to set up the game on page load
-startGame();
+// Set up initial message, but don't start the game until a button is clicked.
+// This prevents a random word fetch on page load.
+function initialSetup() {
+    messageDisplay.textContent = "Welcome! Click 'Start New Game (Random)' or 'Add Your Own Word'.";
+    guessButton.disabled = true;
+    letterInput.disabled = true;
+    startButton.textContent = 'Start New Game (Random)';
+}
+
+initialSetup();

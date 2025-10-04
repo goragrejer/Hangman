@@ -2,7 +2,6 @@
 const MAX_GUESSES = 8;
 const API_URL_ENGLISH = 'https://random-word-api.herokuapp.com/word?number=1';
 
-// We'll keep the guess count at 8 for now, but you can change it to 20 later.
 
 let secretWord = '';
 let guessedLetters = [];

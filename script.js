@@ -100,7 +100,8 @@ function resetGameUI() {
     letterInput.focus();
     
     // Restore button states
-    startButton.textContent = 'Start New Game (Random)';
+    // 🚩 Change 1: Simplify button text from 'Start New Game (Random)' to just 'Start New Game'
+    startButton.textContent = 'Start New Game';
     startButton.disabled = false;
     customWordButton.style.display = 'block';
 }
@@ -108,7 +109,7 @@ function resetGameUI() {
 
 /**
  * Fetches a random word from the English API and initializes the game state.
- * This is now used by the 'Start New Game (Random)' button.
+ * This is now used by the 'Start New Game' button AND the initial page load.
  */
 async function startGameWithRandomWord() {
     // Show loading state
@@ -268,13 +269,6 @@ letterInput.addEventListener('keypress', function(event) {
 
 
 // --- Initial Setup ---
-// Set up initial message, but don't start the game until a button is clicked.
-// This prevents a random word fetch on page load.
-function initialSetup() {
-    messageDisplay.textContent = "Welcome! Click 'Start New Game (Random)' or 'Add Your Own Word'.";
-    guessButton.disabled = true;
-    letterInput.disabled = true;
-    startButton.textContent = 'Start New Game (Random)';
-}
-
-initialSetup();
+// 🚩 Change 2: Delete the old initialSetup function that paused the game.
+// 🚩 Change 3: Automatically start the game on page load for a smooth flow.
+startGameWithRandomWord();
